@@ -77,9 +77,38 @@ class Http2ClientConnection implements connection.ClientConnection {
 
   Future<ClientTransportConnection> connectTransport() async {
     final securityContext = credentials.securityContext;
-    Socket socket = await Socket.connect(host, port);
+    bool unix = false;
+    dynamic _host;
+    dynamic _port = port;
+    if (host != null) {
+      Uri p = Uri.parse(host);
+      if (p.hasScheme) {
+        if (p.scheme == 'unix') {
+          unix = true;
+          _host = InternetAddress(p.host, type: InternetAddressType.unix);
+          _port = 0;
+        } else if (p.scheme == 'http') {
+          _host = p.host;
+          _port = 80;
+        } else if (p.scheme == 'https') {
+          _host = p.host;
+          _port = 433;
+        } else {
+          print("Unsupported scheme: ${p.scheme}!");
+          exit(-1);
+        }
+        if (p.hasPort) {
+          _port = p.port;
+        }
+      } else {
+        _host = host;
+      }
+    }
+    Socket socket = await Socket.connect(_host, _port);
     // Don't wait for io buffers to fill up before sending requests.
-    socket.setOption(SocketOption.tcpNoDelay, true);
+    if (!unix) {
+      socket.setOption(SocketOption.tcpNoDelay, true);
+    }
     if (securityContext != null) {
       // Todo(sigurdm): We want to pass supportedProtocols: ['h2']. http://dartbug.com/37950
       socket = await SecureSocket.secure(socket,

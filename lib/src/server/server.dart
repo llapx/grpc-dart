@@ -93,11 +93,38 @@ class Server {
       bool v6Only: false,
       bool shared: false}) async {
     // TODO(dart-lang/grpc-dart#9): Handle HTTP/1.1 upgrade to h2c, if allowed.
+    bool unix = false;
+    dynamic _address;
+    dynamic _port = port;
+    if (address != null) {
+      Uri p = Uri.parse(address);
+      if (p.hasScheme) {
+        if (p.scheme == 'unix') {
+          unix = true;
+          _address = InternetAddress(p.host, type: InternetAddressType.unix);
+          _port = 0;
+        } else if (p.scheme == 'http') {
+          _address = p.host;
+          _port = 80;
+        } else if (p.scheme == 'https') {
+          _address = p.host;
+          _port = 433;
+        } else {
+          print("Unsupported scheme: ${p.scheme}!");
+          exit(-1);
+        }
+        if (p.hasPort) {
+          _port = p.port;
+        }
+      } else {
+        _address = address;
+      }
+    }
     Stream<Socket> server;
     if (security != null) {
       _secureServer = await SecureServerSocket.bind(
-          address ?? InternetAddress.anyIPv4,
-          port ?? 443,
+          _address ?? InternetAddress.anyIPv4,
+          _port ?? 443,
           security.securityContext,
           backlog: backlog,
           shared: shared,
@@ -105,8 +132,8 @@ class Server {
       server = _secureServer;
     } else {
       _insecureServer = await ServerSocket.bind(
-        address ?? InternetAddress.anyIPv4,
-        port ?? 80,
+        _address ?? InternetAddress.anyIPv4,
+        _port ?? 80,
         backlog: backlog,
         shared: shared,
         v6Only: v6Only,
@@ -115,7 +142,9 @@ class Server {
     }
     server.listen((socket) {
       // Don't wait for io buffers to fill up before sending requests.
-      socket.setOption(SocketOption.tcpNoDelay, true);
+      if (!unix) {
+        socket.setOption(SocketOption.tcpNoDelay, true);
+      }
       final connection = ServerTransportConnection.viaSocket(socket,
           settings: http2ServerSettings);
       _connections.add(connection);
