@@ -94,30 +94,16 @@ class Server {
       bool shared: false}) async {
     // TODO(dart-lang/grpc-dart#9): Handle HTTP/1.1 upgrade to h2c, if allowed.
     bool unix = false;
-    dynamic _address;
-    dynamic _port = port;
+    dynamic _address = address;
+    int _port = port;
     if (address != null) {
-      Uri p = Uri.parse(address);
-      if (p.hasScheme) {
-        if (p.scheme == 'unix') {
+      // `address` which start with 'unix://' prefix, will be parsed as unix socket.
+      RegExp re = new RegExp(r'(unix://)');
+      Match m = re.firstMatch(address);
+      if (m != null) {
           unix = true;
-          _address = InternetAddress(p.host, type: InternetAddressType.unix);
+          _address = InternetAddress(address.substring(m.end), type: InternetAddressType.unix);
           _port = 0;
-        } else if (p.scheme == 'http') {
-          _address = p.host;
-          _port = 80;
-        } else if (p.scheme == 'https') {
-          _address = p.host;
-          _port = 433;
-        } else {
-          print("Unsupported scheme: ${p.scheme}!");
-          exit(-1);
-        }
-        if (p.hasPort) {
-          _port = p.port;
-        }
-      } else {
-        _address = address;
       }
     }
     Stream<Socket> server;

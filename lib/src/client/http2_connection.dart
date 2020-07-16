@@ -78,30 +78,16 @@ class Http2ClientConnection implements connection.ClientConnection {
   Future<ClientTransportConnection> connectTransport() async {
     final securityContext = credentials.securityContext;
     bool unix = false;
-    dynamic _host;
-    dynamic _port = port;
+    dynamic _host = host;
+    int _port = port;
     if (host != null) {
-      Uri p = Uri.parse(host);
-      if (p.hasScheme) {
-        if (p.scheme == 'unix') {
+      // `host` which start with 'unix://' prefix, will be parsed as unix socket.
+      RegExp re = new RegExp(r'(unix://)');
+      Match m = re.firstMatch(host);
+      if (m != null) {
           unix = true;
-          _host = InternetAddress(p.host, type: InternetAddressType.unix);
+          _host = InternetAddress(host.substring(m.end), type: InternetAddressType.unix);
           _port = 0;
-        } else if (p.scheme == 'http') {
-          _host = p.host;
-          _port = 80;
-        } else if (p.scheme == 'https') {
-          _host = p.host;
-          _port = 433;
-        } else {
-          print("Unsupported scheme: ${p.scheme}!");
-          exit(-1);
-        }
-        if (p.hasPort) {
-          _port = p.port;
-        }
-      } else {
-        _host = host;
       }
     }
     Socket socket = await Socket.connect(_host, _port);
