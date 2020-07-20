@@ -98,7 +98,7 @@ class Server {
     int _port = port;
     if (address != null) {
       // `address` which start with 'unix://' prefix, will be parsed as unix socket.
-      RegExp re = new RegExp(r'(unix://)');
+      RegExp re = RegExp(r'(^unix://)');
       Match m = re.firstMatch(address);
       if (m != null) {
           unix = true;

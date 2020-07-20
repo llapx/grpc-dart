@@ -82,7 +82,7 @@ class Http2ClientConnection implements connection.ClientConnection {
     int _port = port;
     if (host != null) {
       // `host` which start with 'unix://' prefix, will be parsed as unix socket.
-      RegExp re = new RegExp(r'(unix://)');
+      RegExp re = RegExp(r'(^unix://)');
       Match m = re.firstMatch(host);
       if (m != null) {
           unix = true;
